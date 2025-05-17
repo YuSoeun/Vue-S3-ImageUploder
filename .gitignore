@@ -1,0 +1,69 @@
+# 환경 변수 파일
+.env
+.env.local
+.env.*.local
+
+# 노드 모듈 & 패키지 매니저
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# 편집기 설정
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.sublime-project
+*.sublime-workspace
+
+# OS 파일
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.lnk
+Desktop.ini
+$RECYCLE.BIN/
+.directory
+.fuse_hidden*
+.Trash-*
+.nfs*
+
+# Vue.js 관련
+.nuxt
+dist
+/dist
+.cache
+.output
+.static
+.serverless
+.netlify
+
+# 로그 파일
+logs
+*.log
+
+# 테스트 관련
+/coverage
+.nyc_output
+.env.development.local
+.env.test.local
+.env.production.local
+
