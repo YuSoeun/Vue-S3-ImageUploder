@@ -4,8 +4,8 @@ AWS S3, Lambda, CloudFront를 사용하여 이미지를 업로드하고 썸네�
 
 ## 동작 화면
 
-![애플리케이션 동작 화면](screenshot.png)
-![애플리케이션 동작 화면2](screenshot2.png)
+![애플리케이션 동작 화면](images/screenshot.png)
+![애플리케이션 동작 화면2](images/screenshot2.png)
 
 *이미지 업로드 및 썸네일 자동 생성 기능을 보여주는 화면*
 
