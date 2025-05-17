@@ -137,7 +137,7 @@ export default {
           }
           
           // 원본 이미지 URL 저장 (CloudFront 사용)
-          const cloudFrontDomain = 'https://d8h3hut1jkl2n.cloudfront.net';
+          const cloudFrontDomain = 'https://[USER_CLOUDFRONT_DOMAIN].cloudfront.net';
           this.uploadedUrls.original = `${cloudFrontDomain}/${fileName}`;
           
           // 예상 썸네일 URL 생성 (CloudFront 사용)
