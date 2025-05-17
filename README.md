@@ -99,14 +99,139 @@ vue-s3-uploader/
 └── vue.config.js          # Vue CLI 설정
 ```
 
+## 트러블슈팅
+
+### CloudFront 403 에러 해결
+
+CloudFront를 통해 S3 이미지에 접근할 때 403 Forbidden 오류가 발생하는 문제와 해결 방법입니다.
+
+#### 1. 문제 상황
+- CloudFront 배포 후 이미지에 접근 시 403 에러 발생
+- S3 버킷 접근 권한 문제 또는 설정 불일치
+
+#### 2. 원인 분석
+- Origin Path가 중복 설정된 경우 (/images가 URL에 이중으로 추가됨)
+- OAC(Origin Access Control) 연결 오류
+- 버킷 정책 설정 미흡
+
+#### 3. 해결 단계
+
+1. **버킷 정책 확인 및 수정**
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "AllowCloudFrontServicePrincipal",
+         "Effect": "Allow",
+         "Principal": {
+           "Service": "cloudfront.amazonaws.com"
+         },
+         "Action": "s3:GetObject",
+         "Resource": "arn:aws:s3:::your-bucket-name/*",
+         "Condition": {
+           "StringEquals": {
+             "AWS:SourceArn": "arn:aws:cloudfront::[ACCOUNT_ID]:distribution/[DISTRIBUTION_ID]"
+           }
+         }
+       }
+     ]
+   }
+   ```
+
+2. **CORS 설정 확인**
+   ```json
+   [
+     {
+       "AllowedHeaders": ["*"],
+       "AllowedMethods": ["GET", "PUT"],
+       "AllowedOrigins": [
+         "https://[CLOUDFRONT_DOMAIN]",
+         "http://localhost:8080"
+       ],
+       "ExposeHeaders": ["ETag"],
+       "MaxAgeSeconds": 3000
+     }
+   ]
+   ```
+
+3. **CloudFront 설정 재확인**
+   - Origin Path가 비어있는지 확인
+   - OAC 설정이 정상적으로 연결되었는지 확인
+
+4. **CloudFront Invalidation 수행**
+   ```bash
+   aws cloudfront create-invalidation \
+     --distribution-id [DISTRIBUTION_ID] \
+     --paths "/*"
+   ```
+
+#### 4. 교훈
+- CloudFront는 OAC 방식으로 처음부터 세팅하는 것이 권장됨
+- 문제가 복잡할 경우 새 배포를 생성하는 것이 더 효율적일 수 있음
+- 설정 변경 후 캐시 무효화(Invalidation)는 필수적인 단계
+
+### AWS Lambda Sharp 라이브러리 호환성 문제
+
+Lambda 함수에서 Sharp 라이브러리를 사용해 썸네일을 생성할 때 발생할 수 있는 호환성 문제와 해결 방법입니다.
+
+#### 1. 문제 상황
+- Lambda 함수가 Sharp 라이브러리를 사용해 이미지 처리 시 오류 발생
+- 로컬에서는 동작하지만 Lambda 환경에서 실행 실패
+
+#### 2. 원인 분석
+- Lambda 실행 환경(Amazon Linux)과 개발 환경의 Node.js 버전 차이
+- Sharp 라이브러리의 네이티브 바이너리 호환성 문제
+- 메모리 제한 또는 실행 시간 초과
+
+#### 3. 해결 단계
+
+1. **Lambda 환경에 맞는 Sharp 설치**
+   ```bash
+   # Amazon Linux 2 환경에 맞게 Sharp 설치
+   docker run --rm -v "$PWD":/var/task amazonlinux:2 \
+     bash -c "yum install -y gcc-c++ && \
+              curl -sL https://rpm.nodesource.com/setup_14.x | bash - && \
+              yum install -y nodejs && \
+              npm install --arch=x64 --platform=linux sharp"
+   ```
+
+2. **Lambda 함수의 메모리 및 제한시간 조정**
+   - 메모리: 최소 512MB 이상으로 설정 (1024MB 권장)
+   - 제한시간: 썸네일 생성에 충분한 시간(30초 이상) 설정
+
+3. **Lambda 함수 레이어 활용**
+   - Sharp 라이브러리를 Lambda 레이어로 분리하여 관리
+   - 미리 컴파일된 Sharp 레이어 사용 고려
+
+4. **Sharp 최적화 설정**
+   ```javascript
+   const sharp = require('sharp');
+   
+   // 메모리 사용량 최적화
+   sharp.cache(false);
+   sharp.concurrency(1);
+   
+   // 썸네일 생성 예제
+   async function resizeImage(inputBuffer) {
+     return await sharp(inputBuffer)
+       .resize(300, 300, { fit: 'inside' })
+       .webp({ quality: 80 })
+       .toBuffer();
+   }
+   ```
+
+#### 4. 교훈
+- Lambda 함수에서 네이티브 모듈 사용 시 실행 환경 호환성 고려 필요
+- 로컬 테스트와 함께 실제 Lambda 환경에서의 테스트도 필수적
+- 최적화된 설정으로 성능과 안정성 확보
+
 ## 보안 고려사항
 
 - 프로덕션 환경에서는 프론트엔드에 직접 AWS 키를 노출하지 않도록 주의하세요
 - AWS IAM 역할과 정책을 최소 권한 원칙에 따라 설정하세요
 - CloudFront + OAI를 사용하여 S3에 직접 접근을 제한하세요
 
-## 트러블슈팅
-
-- **CORS 오류**: S3 버킷의 CORS 설정을 확인하고 CloudFront에서 오리진 헤더를 전달하는지 확인하세요
-- **403 오류**: IAM 권한과 버킷 정책을 확인하세요
-- **썸네일 생성 실패**: Lambda 함수 로그를 확인하고 권한 설정을 점검하세요 
+## 참고 자료
+- [AWS S3 CloudFront 정리 (403 에러 해결 포함)](https://github.com/lets-go-trip/treaXure-backend/wiki/AWS-S3-CloudFront-%EC%A0%95%EB%A6%AC-(403-%EC%97%90%EB%9F%AC-%ED%95%B4%EA%B2%B0-%ED%8F%AC%ED%95%A8))
+- [AWS Lambda Sharp 라이브러리 호환성 문제](https://github.com/lets-go-trip/treaXure-backend/wiki/AWS-Lambda-Sharp-%EB%9D%BC%EC%9D%B4%EB%B8%8C%EB%9F%AC%EB%A6%AC-%ED%98%B8%ED%99%98%EC%84%B1-%EB%AC%B8%EC%A0%9C) 
